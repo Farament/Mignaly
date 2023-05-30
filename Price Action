@@ -1,0 +1,66 @@
+//@version=5
+strategy(title="Price Action Strategy", shorttitle="PA Strategy", currency=currency.USD, process_orders_on_close=true)
+
+//Inputs
+Lookback_Period = input(title="Lookback Period", type=input.integer, defval=20)
+Retrace_Percentage = input(title="Retrace Percentage", type=input.float, defval=0.3, minval=0.1, maxval=0.5)
+Stop_Loss_Pips = input(title="Stop Loss (in pips)", type=input.float, defval=10)
+Reward_Risk_Ratio = input(title="Reward-Risk Ratio", type=input.float, defval=0.5)
+Lot_Size = input(title="Lot Size", type=input.float, defval=1)
+
+//Calculations
+L1 = ta.lowest(Lookback_Period)
+H1 = ta.highest(Lookback_Period)
+L2 = ta.valuewhen(ta.lowestbars(low, Lookback_Period)==0, low, 0)
+H2 = ta.valuewhen(ta.highestbars(high, Lookback_Period)==0, high, 0)
+L3 = ta.valuewhen(ta.lowestbars(low, Lookback_Period)==1, low, 0)
+H3 = ta.valuewhen(ta.highestbars(high, Lookback_Period)==1, high, 0)
+
+UpTrend = L1 < L2 and H1 > H2
+DownTrend = H1 > H2 and L1 < L2
+
+Stop_Loss = H3 + Stop_Loss_Pips > high ? H3 + Stop_Loss_Pips : high - Stop_Loss_Pips
+Take_Profit = UpTrend ? L3 - (H3 - L3) * Retrace_Percentage : H3 + (H3 - L3) * Retrace_Percentage
+Risk = math.abs(high - Stop_Loss) * Lot_Size
+Reward = math.abs(Take_Profit - high) * Lot_Size
+
+Buy_Signal = UpTrend and ta.crosses(ta.high, H3) 
+Sell_Signal = DownTrend and ta.crosses(L3, ta.low)
+
+strategy.entry(id="Buy", long=true, when=Buy_Signal)
+strategy.entry(id="Sell", long=false, when=Sell_Signal)
+
+strategy.exit(id="Take Profit",
+              from_entry="Buy",
+              profit=Take_Profit,
+              limit=Take_Profit,
+              when=Take_Profit > high and Risk <= Reward / Reward_Risk_Ratio)
+
+strategy.exit(id="Stop Loss",
+              from_entry="Buy",
+              loss=Stop_Loss,
+              stop=Stop_Loss,
+              when=Stop_Loss < high and Risk <= Reward / Reward_Risk_Ratio)
+
+strategy.exit(id="Take Profit",
+              from_entry="Sell",
+              profit=Take_Profit,
+              limit=Take_Profit,
+              when=Take_Profit < low and Risk <= Reward / Reward_Risk_Ratio)
+
+strategy.exit(id="Stop Loss",
+              from_entry="Sell",
+              loss=Stop_Loss,
+              stop=Stop_Loss,
+              when=Stop_Loss > low and Risk <= Reward / Reward_Risk_Ratio)
+
+// Dashbaord
+trendColor = UpTrend ? color.green : color.red
+signalColor = Buy_Signal ? color.green : Sell_Signal ? color.red : color.orange
+
+winRate = (strategy.win_rate(long_trades=true) + strategy.win_rate(short_trades=true)) / 2
+winRatePercent = tostring(winRate * 100, format.decimal, 2) + "%"
+
+plotchar(title="Trend", text="Trend: " + (UpTrend ? "Bullish" : "Bearish"), char="", location=location.topright, color=trendColor, textcolor=color.white, size=size.tiny)
+plotchar(title="Signal", text="Signal: " + (Buy_Signal ? "Buy" : Sell_Signal ? "Sell" : "-"), char="", location=location.topright, offset=1, color=signalColor, textcolor=color.white, size=size.tiny)
+plotchar(title="Win Rate", text="Win Rate: " + winRatePercent, char="", location=location.topright, offset=2, color=color.blue, textcolor=color.white, size=size.tiny)
