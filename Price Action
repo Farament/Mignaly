@@ -16,16 +16,16 @@ H2 = ta.valuewhen(ta.highestbars(high, Lookback_Period)==0, high, 0)
 L3 = ta.valuewhen(ta.lowestbars(low, Lookback_Period)==1, low, 0)
 H3 = ta.valuewhen(ta.highestbars(high, Lookback_Period)==1, high, 0)
 
-UpTrend = L1 < L2 and H1 > H2
-DownTrend = H1 > H2 and L1 < L2
+UpTrend = L1 > L2 and H1 > H2
+DownTrend = H1 < H2 and L1 < L2
 
 Stop_Loss = H3 + Stop_Loss_Pips > high ? H3 + Stop_Loss_Pips : high - Stop_Loss_Pips
 Take_Profit = UpTrend ? L3 - (H3 - L3) * Retrace_Percentage : H3 + (H3 - L3) * Retrace_Percentage
 Risk = math.abs(high - Stop_Loss) * Lot_Size
 Reward = math.abs(Take_Profit - high) * Lot_Size
 
-Buy_Signal = UpTrend and ta.crosses(ta.high, H3) 
-Sell_Signal = DownTrend and ta.crosses(L3, ta.low)
+Buy_Signal = UpTrend and ta.crossover(high, H3)
+Sell_Signal = DownTrend and ta.crossunder(low, L3)
 
 strategy.entry(id="Buy", long=true, when=Buy_Signal)
 strategy.entry(id="Sell", long=false, when=Sell_Signal)
